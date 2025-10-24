@@ -3,217 +3,660 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Minimal Stopwatch</title>
+  <title>Enhanced Stopwatch</title>
   <style>
     :root{
-      --bg:#f6f7fb;
-      --card:#ffffff;
-      --muted:#8b93a7;
-      --accent:#111827;
-      --accent-2:#0ea5a4;
-      --glass: rgba(16,24,40,0.03);
-      --shadow: 0 6px 20px rgba(16,24,40,0.06);
-      --radius:14px;
-      --pad:20px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", monospace;
+      --bg:#0f172a;
+      --card:#1e293b;
+      --card-light:#334155;
+      --muted:#94a3b8;
+      --accent:#f8fafc;
+      --primary:#06b6d4;
+      --primary-dark:#0891b2;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --glass: rgba(255,255,255,0.05);
+      --shadow: 0 20px 60px rgba(0,0,0,0.5);
+      --radius:20px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
       --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     }
 
-    /* Page */
-    html,body{height:100%;margin:0;}
+    *{box-sizing:border-box;}
+    html,body{height:100%;margin:0;overflow-x:hidden;}
     body{
       font-family:var(--ui);
-      background:linear-gradient(180deg,var(--bg),#eef1f8 60%);
+      background:linear-gradient(135deg,#0f172a 0%, #1e293b 50%, #0f172a 100%);
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:32px;
+      padding:20px;
       color:var(--accent);
+      position:relative;
+    }
+
+    /* Animated background */
+    body::before{
+      content:'';
+      position:fixed;
+      top:0;left:0;right:0;bottom:0;
+      background:radial-gradient(circle at 20% 50%, rgba(6,182,212,0.15) 0%, transparent 50%),
+                 radial-gradient(circle at 80% 80%, rgba(16,185,129,0.1) 0%, transparent 50%);
+      animation:pulse 8s ease-in-out infinite;
+      z-index:0;
+    }
+
+    @keyframes pulse{
+      0%, 100%{opacity:0.6;}
+      50%{opacity:1;}
+    }
+
+    /* Main container */
+    .container{
+      width:min(520px, 100%);
+      position:relative;
+      z-index:1;
     }
 
     /* Card */
     .card{
-      width:min(460px,96vw);
-      background:var(--card);
+      background:rgba(30,41,59,0.95);
+      backdrop-filter:blur(20px);
       border-radius:var(--radius);
-      padding:calc(var(--pad) * 1.2);
-      box-shadow:var(--shadow);
+      padding:32px 28px;
+      box-shadow:var(--shadow), 0 0 0 1px rgba(255,255,255,0.1);
       display:flex;
       flex-direction:column;
-      gap:18px;
-      align-items:center;
-      border: 1px solid var(--glass);
+      gap:24px;
+      position:relative;
+      overflow:hidden;
     }
 
+    .card::before{
+      content:'';
+      position:absolute;
+      top:0;left:0;right:0;
+      height:3px;
+      background:linear-gradient(90deg, var(--primary), var(--success));
+      opacity:0;
+      transition:opacity 0.3s;
+    }
+
+    .card.running::before{opacity:1;}
+
     /* Header */
-    .meta{
-      width:100%;
+    .header{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      gap:12px;
+      gap:16px;
     }
-    .title{font-weight:600; font-size:0.95rem; color:#0f1724;}
-    .sub{font-size:0.78rem; color:var(--muted);}
 
-    /* Time display */
-    .display{
-      width:100%;
-      background:linear-gradient(180deg,#fff,#fbfdff);
-      border-radius:12px;
-      padding:18px 20px;
-      text-align:center;
-      box-shadow: 0 4px 14px rgba(2,6,23,0.04) inset;
+    .title{
+      font-weight:700;
+      font-size:1.5rem;
+      background:linear-gradient(135deg, #fff 0%, var(--muted) 100%);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
     }
+
+    .theme-toggle{
+      width:44px;
+      height:44px;
+      border:none;
+      background:var(--glass);
+      border-radius:12px;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition:all 0.3s;
+      border:1px solid rgba(255,255,255,0.1);
+    }
+
+    .theme-toggle:hover{
+      background:rgba(255,255,255,0.1);
+      transform:scale(1.05);
+    }
+
+    /* Display */
+    .display{
+      background:linear-gradient(135deg, rgba(6,182,212,0.1), rgba(16,185,129,0.05));
+      border-radius:16px;
+      padding:32px 24px;
+      text-align:center;
+      border:1px solid rgba(255,255,255,0.1);
+      position:relative;
+      overflow:hidden;
+    }
+
+    .display::before{
+      content:'';
+      position:absolute;
+      top:-50%;
+      left:-50%;
+      width:200%;
+      height:200%;
+      background:conic-gradient(from 0deg, transparent, rgba(6,182,212,0.3), transparent);
+      animation:rotate 4s linear infinite;
+      opacity:0;
+    }
+
+    .display.running::before{opacity:1;}
+
+    @keyframes rotate{
+      100%{transform:rotate(360deg);}
+    }
+
     .time{
       font-family:var(--mono);
-      font-size:2.6rem;
-      letter-spacing:0.02em;
+      font-size:3.2rem;
+      letter-spacing:0.05em;
       margin:0;
       color:var(--accent);
-      line-height:1;
+      line-height:1.2;
+      font-weight:600;
+      text-shadow:0 0 30px rgba(6,182,212,0.5);
+      position:relative;
+      z-index:1;
     }
-    .small{
-      font-size:0.81rem;
+
+    .ms{
+      font-size:2rem;
       color:var(--muted);
-      margin-top:6px;
+      opacity:0.7;
+    }
+
+    .label{
+      font-size:0.85rem;
+      color:var(--muted);
+      margin-top:12px;
+      letter-spacing:0.1em;
+      text-transform:uppercase;
+    }
+
+    /* Stats row */
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-top:-8px;
+    }
+
+    .stat-card{
+      background:var(--glass);
+      border-radius:12px;
+      padding:14px 12px;
+      text-align:center;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
+    .stat-label{
+      font-size:0.72rem;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+      margin-bottom:4px;
+    }
+
+    .stat-value{
+      font-family:var(--mono);
+      font-size:0.95rem;
+      font-weight:600;
+      color:var(--accent);
     }
 
     /* Controls */
     .controls{
-      width:100%;
       display:flex;
-      gap:10px;
+      gap:12px;
       justify-content:center;
+      flex-wrap:wrap;
     }
+
     .btn{
       appearance:none;
-      border:0;
-      background:transparent;
-      padding:10px;
-      border-radius:10px;
+      border:none;
+      padding:14px 24px;
+      border-radius:12px;
       cursor:pointer;
-      display:inline-grid;
-      place-items:center;
-      transition: all 150ms ease;
-      min-width:48px;
-      min-height:48px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition:all 0.2s;
+      font-weight:600;
+      font-size:0.95rem;
+      font-family:var(--ui);
+      min-height:52px;
+      position:relative;
+      overflow:hidden;
     }
-    .btn:focus{outline:2px solid rgba(14,165,164,0.14); outline-offset:3px;}
-    .btn--primary{
-      background:linear-gradient(90deg,var(--accent-2),#06b6d4);
-      color:#fff;
-      box-shadow: 0 6px 18px rgba(6,95,95,0.08);
-    }
-    .btn--muted{
-      background:transparent;
-      color:var(--accent);
-      border:1px solid rgba(15,23,36,0.06);
-    }
-    .btn[disabled]{opacity:0.45; cursor:default; transform:none;}
 
-    /* Laps */
-    .laps{
-      width:100%;
+    .btn::before{
+      content:'';
+      position:absolute;
+      top:50%;
+      left:50%;
+      width:0;
+      height:0;
+      border-radius:50%;
+      background:rgba(255,255,255,0.2);
+      transform:translate(-50%,-50%);
+      transition:width 0.6s, height 0.6s;
+    }
+
+    .btn:active::before{
+      width:300px;
+      height:300px;
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color:#fff;
+      box-shadow:0 10px 30px rgba(6,182,212,0.3);
+      flex:1;
+      min-width:120px;
+    }
+
+    .btn-primary:hover{
+      transform:translateY(-2px);
+      box-shadow:0 12px 35px rgba(6,182,212,0.4);
+    }
+
+    .btn-danger{
+      background:linear-gradient(135deg, var(--danger), #dc2626);
+      color:#fff;
+      box-shadow:0 10px 30px rgba(239,68,68,0.3);
+      flex:1;
+      min-width:120px;
+    }
+
+    .btn-danger:hover{
+      transform:translateY(-2px);
+      box-shadow:0 12px 35px rgba(239,68,68,0.4);
+    }
+
+    .btn-secondary{
+      background:var(--glass);
+      color:var(--accent);
+      border:1px solid rgba(255,255,255,0.2);
+    }
+
+    .btn-secondary:hover{
+      background:rgba(255,255,255,0.15);
+      transform:translateY(-2px);
+    }
+
+    .btn:disabled{
+      opacity:0.4;
+      cursor:not-allowed;
+      transform:none !important;
+    }
+
+    .btn svg{
+      width:18px;
+      height:18px;
+      position:relative;
+      z-index:1;
+    }
+
+    .btn span{
+      position:relative;
+      z-index:1;
+    }
+
+    /* Laps section */
+    .laps-section{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .laps-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .section-title{
+      font-weight:600;
+      font-size:1.1rem;
+      color:var(--accent);
+    }
+
+    .clear-laps{
+      background:transparent;
+      border:none;
+      color:var(--danger);
+      cursor:pointer;
+      font-size:0.85rem;
+      padding:6px 12px;
+      border-radius:8px;
+      transition:all 0.2s;
+    }
+
+    .clear-laps:hover{
+      background:rgba(239,68,68,0.1);
+    }
+
+    .laps-container{
+      max-height:280px;
+      overflow-y:auto;
       display:flex;
       flex-direction:column;
       gap:8px;
-      margin-top:6px;
+      padding-right:4px;
     }
+
+    .laps-container::-webkit-scrollbar{
+      width:6px;
+    }
+
+    .laps-container::-webkit-scrollbar-track{
+      background:var(--glass);
+      border-radius:10px;
+    }
+
+    .laps-container::-webkit-scrollbar-thumb{
+      background:rgba(255,255,255,0.2);
+      border-radius:10px;
+    }
+
+    .laps-container::-webkit-scrollbar-thumb:hover{
+      background:rgba(255,255,255,0.3);
+    }
+
     .lap{
       display:flex;
       justify-content:space-between;
       align-items:center;
       background:var(--glass);
-      padding:10px 12px;
-      border-radius:10px;
-      font-size:0.88rem;
-      color:var(--accent);
+      padding:14px 16px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      animation:slideIn 0.3s ease;
     }
-    .lap .index{color:var(--muted); font-size:0.82rem;}
-    .no-laps{font-size:0.86rem; color:var(--muted); text-align:center; padding:8px 0;}
 
-    /* Icons (simple) */
-    svg{width:18px;height:18px;display:block;}
+    @keyframes slideIn{
+      from{
+        opacity:0;
+        transform:translateX(-20px);
+      }
+      to{
+        opacity:1;
+        transform:translateX(0);
+      }
+    }
 
-    /* Responsive tweaks */
-    @media (max-width:380px){
-      .time{font-size:2.1rem;}
-      .card{padding:16px;}
-      .btn{min-width:44px; min-height:44px;}
+    .lap:hover{
+      background:rgba(255,255,255,0.1);
+      border-color:rgba(255,255,255,0.15);
+    }
+
+    .lap-info{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .lap-number{
+      background:var(--primary);
+      color:#fff;
+      width:32px;
+      height:32px;
+      border-radius:8px;
+      display:grid;
+      place-items:center;
+      font-weight:700;
+      font-size:0.85rem;
+    }
+
+    .lap-details{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+
+    .lap-time{
+      font-family:var(--mono);
+      font-weight:600;
+      font-size:1rem;
+    }
+
+    .lap-diff{
+      font-size:0.75rem;
+      color:var(--muted);
+    }
+
+    .lap-diff.faster{color:var(--success);}
+    .lap-diff.slower{color:var(--warning);}
+
+    .best-badge{
+      background:linear-gradient(135deg, var(--success), #059669);
+      color:#fff;
+      padding:4px 10px;
+      border-radius:6px;
+      font-size:0.75rem;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+    }
+
+    .worst-badge{
+      background:linear-gradient(135deg, var(--danger), #dc2626);
+      color:#fff;
+      padding:4px 10px;
+      border-radius:6px;
+      font-size:0.75rem;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+    }
+
+    .no-laps{
+      text-align:center;
+      color:var(--muted);
+      padding:32px 16px;
+      font-size:0.95rem;
+    }
+
+    /* Keyboard shortcuts */
+    .shortcuts{
+      background:var(--glass);
+      border-radius:12px;
+      padding:12px 16px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,0.08);
+      margin-top:8px;
+    }
+
+    .shortcut{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:0.8rem;
+      color:var(--muted);
+    }
+
+    .key{
+      background:rgba(255,255,255,0.1);
+      padding:3px 8px;
+      border-radius:6px;
+      font-family:var(--mono);
+      font-weight:600;
+      color:var(--accent);
+      font-size:0.75rem;
+      border:1px solid rgba(255,255,255,0.15);
+    }
+
+    /* Light theme */
+    body.light{
+      --bg:#f1f5f9;
+      --card:#ffffff;
+      --card-light:#f8fafc;
+      --muted:#64748b;
+      --accent:#0f172a;
+      --glass:rgba(0,0,0,0.03);
+      background:linear-gradient(135deg,#f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+    }
+
+    body.light::before{
+      background:radial-gradient(circle at 20% 50%, rgba(6,182,212,0.08) 0%, transparent 50%),
+                 radial-gradient(circle at 80% 80%, rgba(16,185,129,0.06) 0%, transparent 50%);
+    }
+
+    body.light .card{
+      background:rgba(255,255,255,0.95);
+      box-shadow:0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
+    }
+
+    body.light .display{
+      background:linear-gradient(135deg, rgba(6,182,212,0.08), rgba(16,185,129,0.05));
+      border-color:rgba(0,0,0,0.08);
+    }
+
+    body.light .time{
+      text-shadow:0 0 30px rgba(6,182,212,0.2);
+    }
+
+    /* Mobile responsive */
+    @media (max-width:600px){
+      body{padding:12px;}
+      .card{padding:20px 16px;gap:20px;}
+      .time{font-size:2.4rem;}
+      .ms{font-size:1.5rem;}
+      .controls{gap:8px;}
+      .btn{padding:12px 18px;font-size:0.9rem;min-height:48px;}
+      .btn-primary, .btn-danger{min-width:100px;}
+      .stats{gap:8px;}
+      .stat-card{padding:10px 8px;}
+      .stat-value{font-size:0.85rem;}
+      .laps-container{max-height:220px;}
+      .shortcuts{font-size:0.75rem;padding:10px 12px;gap:8px;}
+    }
+
+    @media (max-width:400px){
+      .time{font-size:2rem;}
+      .ms{font-size:1.2rem;}
+      .btn{padding:10px 14px;font-size:0.85rem;}
+      .controls{flex-direction:column;}
+      .btn-primary, .btn-danger{width:100%;}
+      .stats{grid-template-columns:1fr 1fr;gap:8px;}
+      .stat-card:last-child{grid-column:1/-1;}
     }
   </style>
 </head>
 <body>
-  <main class="card" role="application" aria-label="Minimal stopwatch">
-    <div class="meta">
-      <div>
-        <div class="title">Stopwatch</div>
-        <div class="sub">Clean • Minimal • Accessible</div>
+  <div class="container">
+    <div class="card" id="card">
+      <div class="header">
+        <h1 class="title">⏱️ Stopwatch</h1>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
       </div>
-      <div class="sub" id="status" aria-live="polite">Ready</div>
+
+      <div class="display" id="display">
+        <div id="time" class="time">
+          <span id="timeMain">00:00:00</span><span class="ms" id="timeMs">.00</span>
+        </div>
+        <div class="label">Hours : Minutes : Seconds</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Laps</div>
+          <div class="stat-value" id="lapCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Lap</div>
+          <div class="stat-value" id="bestLap">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Lap</div>
+          <div class="stat-value" id="avgLap">--</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M8 5v14l11-7L8 5z" fill="currentColor"/>
+          </svg>
+          <span>Start</span>
+        </button>
+
+        <button id="pauseBtn" class="btn btn-danger" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/>
+          </svg>
+          <span>Pause</span>
+        </button>
+
+        <button id="lapBtn" class="btn btn-secondary" disabled>
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 3v18M5 7c3-1.5 6-1.5 9 0v8c-3-1.5-6-1.5-9 0" fill="currentColor"/>
+          </svg>
+          <span>Lap</span>
+        </button>
+
+        <button id="resetBtn" class="btn btn-secondary" disabled>
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M21 12a9 9 0 1 1-2.6-6.2L21 7M21 3v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Reset</span>
+        </button>
+      </div>
+
+      <div class="laps-section">
+        <div class="laps-header">
+          <div class="section-title">Lap Times</div>
+          <button class="clear-laps" id="clearLaps" style="display:none;">Clear All</button>
+        </div>
+        <div class="laps-container" id="lapsContainer">
+          <div class="no-laps">Start the timer and press Lap to record splits</div>
+        </div>
+      </div>
+
+      <div class="shortcuts">
+        <div class="shortcut"><span class="key">Space</span> Start/Pause</div>
+        <div class="shortcut"><span class="key">L</span> Lap</div>
+        <div class="shortcut"><span class="key">R</span> Reset</div>
+        <div class="shortcut"><span class="key">T</span> Theme</div>
+      </div>
     </div>
-
-    <div class="display" role="timer" aria-atomic="true" aria-live="off">
-      <div id="time" class="time">00:00:00.00</div>
-      <div class="small">HH:MM:SS.ms</div>
-    </div>
-
-    <div class="controls" role="group" aria-label="Stopwatch controls">
-      <button id="start" class="btn btn--primary" title="Start" aria-pressed="false">
-        <!-- Play icon -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 4.5v15l13-7.5L6 4.5z" fill="currentColor"/>
-        </svg>
-      </button>
-
-      <button id="pause" class="btn btn--muted" title="Pause" disabled>
-        <!-- Pause icon -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/>
-        </svg>
-      </button>
-
-      <button id="lap" class="btn btn--muted" title="Lap" disabled>
-        <!-- Flag / lap icon -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M6 7c3-1.6 6-1.6 9 0v8c-3-1.6-6-1.6-9 0" fill="currentColor"/>
-        </svg>
-      </button>
-
-      <button id="reset" class="btn btn--muted" title="Reset" disabled>
-        <!-- Reset icon -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M21 12a9 9 0 1 1-2.6-6.2L21 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21 3v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-
-    <div class="laps" id="laps" aria-live="polite">
-      <div class="no-laps" id="noLaps">No laps yet</div>
-    </div>
-  </main>
+  </div>
 
   <script>
-    // State
-    let startAt = 0;       // timestamp when started/resumed
-    let elapsed = 0;       // ms elapsed when paused
+    let startAt = 0;
+    let elapsed = 0;
     let timer = null;
     let running = false;
+    let laps = [];
+    let lastLapTime = 0;
 
-    // Elements
-    const elTime = document.getElementById('time');
-    const btnStart = document.getElementById('start');
-    const btnPause = document.getElementById('pause');
-    const btnReset = document.getElementById('reset');
-    const btnLap = document.getElementById('lap');
-    const lapsEl = document.getElementById('laps');
-    const noLaps = document.getElementById('noLaps');
-    const statusEl = document.getElementById('status');
+    const elTimeMain = document.getElementById('timeMain');
+    const elTimeMs = document.getElementById('timeMs');
+    const btnStart = document.getElementById('startBtn');
+    const btnPause = document.getElementById('pauseBtn');
+    const btnReset = document.getElementById('resetBtn');
+    const btnLap = document.getElementById('lapBtn');
+    const lapsContainer = document.getElementById('lapsContainer');
+    const lapCount = document.getElementById('lapCount');
+    const bestLap = document.getElementById('bestLap');
+    const avgLap = document.getElementById('avgLap');
+    const clearLaps = document.getElementById('clearLaps');
+    const themeToggle = document.getElementById('themeToggle');
+    const card = document.getElementById('card');
+    const display = document.getElementById('display');
 
-    // Formatting helper: ms -> HH:MM:SS.ms (two-digit hundredths)
     function format(ms){
       const totalHundredths = Math.floor(ms / 10);
       const hh = Math.floor(totalHundredths / 360000);
@@ -221,21 +664,27 @@
       const ss = Math.floor((totalHundredths % 6000) / 100);
       const cc = totalHundredths % 100;
 
-      const sHH = String(hh).padStart(2,'0');
-      const sMM = String(mm).padStart(2,'0');
-      const sSS = String(ss).padStart(2,'0');
-      const sCC = String(cc).padStart(2,'0');
-
-      return `${sHH}:${sMM}:${sSS}.${sCC}`;
+      return {
+        main: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
+        ms: `.${String(cc).padStart(2,'0')}`
+      };
     }
 
-    // Render display
+    function formatShort(ms){
+      const totalHundredths = Math.floor(ms / 10);
+      const mm = Math.floor(totalHundredths / 6000);
+      const ss = Math.floor((totalHundredths % 6000) / 100);
+      const cc = totalHundredths % 100;
+      return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(cc).padStart(2,'0')}`;
+    }
+
     function render(){
       const ms = running ? (Date.now() - startAt + elapsed) : elapsed;
-      elTime.textContent = format(ms);
+      const time = format(ms);
+      elTimeMain.textContent = time.main;
+      elTimeMs.textContent = time.ms;
     }
 
-    // Tick at 60fps-ish but update displayed hundredths properly
     function startTimer(){
       if (timer) cancelAnimationFrame(timer);
       function tick(){
@@ -250,79 +699,152 @@
       timer = null;
     }
 
-    // Controls
-    btnStart.addEventListener('click', () => {
-      if (!running){
-        running = true;
-        startAt = Date.now();
-        startTimer();
-        btnStart.setAttribute('aria-pressed','true');
-        btnStart.classList.add('btn--primary');
-        btnPause.disabled = false;
-        btnReset.disabled = false;
-        btnLap.disabled = false;
-        statusEl.textContent = 'Running';
+    function updateStats(){
+      lapCount.textContent = laps.length;
+      
+      if(laps.length === 0){
+        bestLap.textContent = '--';
+        avgLap.textContent = '--';
+        return;
       }
+
+      const times = laps.map(l => l.time);
+      const min = Math.min(...times);
+      const avg = times.reduce((a,b) => a + b, 0) / times.length;
+      
+      bestLap.textContent = formatShort(min);
+      avgLap.textContent = formatShort(avg);
+    }
+
+    function addLap(){
+      const current = running ? (Date.now() - startAt + elapsed) : elapsed;
+      const lapTime = current - lastLapTime;
+      lastLapTime = current;
+      
+      laps.unshift({time: lapTime, total: current});
+      
+      renderLaps();
+      updateStats();
+      clearLaps.style.display = 'block';
+    }
+
+    function renderLaps(){
+      lapsContainer.innerHTML = '';
+      
+      if(laps.length === 0){
+        lapsContainer.innerHTML = '<div class="no-laps">Start the timer and press Lap to record splits</div>';
+        return;
+      }
+
+      const times = laps.map(l => l.time);
+      const minTime = Math.min(...times);
+      const maxTime = Math.max(...times);
+
+      laps.forEach((lap, index) => {
+        const lapNum = laps.length - index;
+        const item = document.createElement('div');
+        item.className = 'lap';
+        
+        let badge = '';
+        if(laps.length > 1){
+          if(lap.time === minTime) badge = '<span class="best-badge">Best</span>';
+          else if(lap.time === maxTime) badge = '<span class="worst-badge">Worst</span>';
+        }
+
+        let diff = '';
+        if(index < laps.length - 1){
+          const prevLap = laps[index + 1];
+          const delta = lap.time - prevLap.time;
+          const sign = delta > 0 ? '+' : '';
+          const className = delta < 0 ? 'faster' : 'slower';
+          diff = `<div class="lap-diff ${className}">${sign}${formatShort(Math.abs(delta))}</div>`;
+        }
+
+        item.innerHTML = `
+          <div class="lap-info">
+            <div class="lap-number">${lapNum}</div>
+            <div class="lap-details">
+              <div class="lap-time">${formatShort(lap.time)}</div>
+              ${diff}
+            </div>
+          </div>
+          ${badge}
+        `;
+        
+        lapsContainer.appendChild(item);
+      });
+    }
+
+    btnStart.addEventListener('click', () => {
+      running = true;
+      startAt = Date.now();
+      startTimer();
+      btnStart.style.display = 'none';
+      btnPause.style.display = 'inline-flex';
+      btnReset.disabled = false;
+      btnLap.disabled = false;
+      card.classList.add('running');
+      display.classList.add('running');
     });
 
     btnPause.addEventListener('click', () => {
-      if (running){
-        running = false;
-        elapsed = Date.now() - startAt + elapsed;
-        stopTimer();
-        btnStart.setAttribute('aria-pressed','false');
-        btnStart.classList.remove('btn--primary');
-        btnPause.disabled = true;
-        statusEl.textContent = 'Paused';
-      }
+      running = false;
+      elapsed = Date.now() - startAt + elapsed;
+      stopTimer();
+      btnPause.style.display = 'none';
+      btnStart.style.display = 'inline-flex';
+      card.classList.remove('running');
+      display.classList.remove('running');
     });
 
     btnReset.addEventListener('click', () => {
       running = false;
       startAt = 0;
       elapsed = 0;
+      lastLapTime = 0;
+      laps = [];
       stopTimer();
       render();
-      // reset UI
-      btnPause.disabled = true;
+      btnPause.style.display = 'none';
+      btnStart.style.display = 'inline-flex';
       btnReset.disabled = true;
       btnLap.disabled = true;
-      // clear laps
-      lapsEl.innerHTML = '';
-      lapsEl.appendChild(noLaps);
-      statusEl.textContent = 'Ready';
+      card.classList.remove('running');
+      display.classList.remove('running');
+      renderLaps();
+      updateStats();
+      clearLaps.style.display = 'none';
     });
 
-    btnLap.addEventListener('click', () => {
-      const current = running ? (Date.now() - startAt + elapsed) : elapsed;
-      const lapText = format(current);
-      addLap(lapText);
+    btnLap.addEventListener('click', addLap);
+
+    clearLaps.addEventListener('click', () => {
+      laps = [];
+      lastLapTime = running ? (Date.now() - startAt + elapsed) : elapsed;
+      renderLaps();
+      updateStats();
+      clearLaps.style.display = 'none';
     });
 
-    // Add lap (most recent on top)
-    function addLap(text){
-      // remove "no laps" placeholder if present
-      if (noLaps && noLaps.parentNode) noLaps.remove();
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('light');
+    });
 
-      const rows = lapsEl.querySelectorAll('.lap');
-      const idx = rows.length + 1;
-      const item = document.createElement('div');
-      item.className = 'lap';
-      item.innerHTML = `<div class="index">Lap ${idx}</div><div class="timeVal">${text}</div>`;
-      // prepend
-      lapsEl.insertBefore(item, lapsEl.firstChild);
-    }
-
-    // keyboard shortcuts: Space = start/pause, r = reset, l = lap
     window.addEventListener('keydown', (e) => {
-      if (e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
-      if (e.code === 'Space'){ e.preventDefault(); running ? btnPause.click() : btnStart.click(); }
-      if (e.key.toLowerCase() === 'r') btnReset.click();
-      if (e.key.toLowerCase() === 'l') btnLap.click();
+      if(e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      
+      if(e.code === 'Space'){
+        e.preventDefault();
+        if(running) btnPause.click();
+        else btnStart.click();
+      }
+      if(e.key.toLowerCase() === 'r' && !btnReset.disabled) btnReset.click();
+      if(e.key.toLowerCase() === 'l' && !btnLap.disabled) btnLap.click();
+      if(e.key.toLowerCase() === 't') themeToggle.click();
     });
 
-    // initial render
     render();
+    updateStats();
   </script>
 </body>
 </html>
